@@ -1,0 +1,4 @@
+{
+    "name": "Employees",
+    "depends": ['base']
+}
