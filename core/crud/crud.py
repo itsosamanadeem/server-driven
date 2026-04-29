@@ -1,5 +1,11 @@
 from sqlalchemy.orm import Session
 from core.registry import registry
+from core.hooks.executor import HookExecutor
+from core.hooks import events
+from core.hooks.context import HookContext
+from core.validators.validator import Validator
+from core.audit.audit_service import AuditService
+from core.utils.serializer import to_dict
 
 class CRUD:
 
@@ -10,7 +16,7 @@ class CRUD:
     def _get_meta(self, obj):
         cls = type(obj)
         if cls not in self.meta_cache:
-            self.meta_cache[cls] = registry.model_meta.get(cls.__name__, {})
+            self.meta_cache[cls] = registry.model_meta.get(cls.__tablename__, {})
         return self.meta_cache[cls]
     
     def get_model(self, model_name: str):
@@ -22,16 +28,45 @@ class CRUD:
     # 🔹 CREATE
     def create(self, model_name: str, data: dict):
         model = self.get_model(model_name)
-
         obj = model()
 
-        self._apply_data(obj, data)
+        ctx = HookContext(
+            db=self.db,
+            model=model_name,
+            obj=obj,
+            data=data,
+            user=None
+        )
 
-        self.db.add(obj)
-        self.db.commit()
-        self.db.refresh(obj)
+        try:
+            result = HookExecutor.run(events.BEFORE_CREATE, ctx)
+            
+            if not result.allow:
+                self.db.rollback()
+                raise Exception(result.message or "Blocked by hook")
+            
+            Validator.validate(self.db, model_name, data)
+            self._apply_data(obj, data)
+            self.db.add(obj)
+            self.db.commit()
+            self.db.refresh(obj)
 
-        return obj
+            ctx.obj = obj
+            HookExecutor.run(events.AFTER_CREATE, ctx)
+            AuditService.log(
+                self.db,
+                model_name,
+                obj.id,
+                "create",
+                None,
+                to_dict(obj)
+            )
+            self.db.commit()
+            return obj
+
+        except Exception as e:
+            self.db.rollback()
+            raise
 
     # 🔹 READ (list)
     def search(self, model_name: str):
@@ -70,11 +105,10 @@ class CRUD:
         """
         Use registry metadata instead of inspect
         """
-        cls = type(obj)
-        meta = self._get_meta(cls)
+        meta = self._get_meta(obj)
         columns = meta.get("columns", {})
         relationships = meta.get("relationships", {})
-        print(columns, relationships)
+        # print(columns, relationships)
         for key, value in data.items():
 
             # Skip unknown fields
@@ -83,6 +117,7 @@ class CRUD:
 
             # 🔹 NORMAL FIELD
             if key in columns:
+                # print(f"Setting attribute {key} to {value} on {cls.__name__}")
                 setattr(obj, key, value)
                 continue
 

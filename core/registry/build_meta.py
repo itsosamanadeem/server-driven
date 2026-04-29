@@ -1,10 +1,15 @@
 from sqlalchemy.inspection import inspect
 from .registry import Registry
+from .fields_cache import FieldCache
 
 import logging
 logger = logging.getLogger(__name__)
 
 class BuildMeta(Registry):
+    def __init__(self):
+        super().__init__()
+        self.field_cache = FieldCache()
+        
     def build_meta(self):
         for name, model_class in self.models.items():
             try:
@@ -15,7 +20,7 @@ class BuildMeta(Registry):
 
             columns = {c.key: c for c in mapper.columns}
             relationships = {}
-
+#
             for r in mapper.relationships:
                 relationships[r.key] = {
                     "model": r.mapper.class_,

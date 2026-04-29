@@ -7,13 +7,13 @@ from sqlalchemy import Table, Column, ForeignKey
 
 association_table = Table(
     "user_group_rel",
-    Base.metadata,
+    Base.metadata, # type: ignore[union-attr]
     Column("user_id", ForeignKey("ir_user.id")),
     Column("group_id", ForeignKey("ir_groups.id")),
 )
 
 class User(Base):
-    __tablename__ = "ir_user"
+    __tablename__ = "ir_user" # type: ignore[assignment]
     
     id : Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50),nullable=False)
@@ -23,7 +23,7 @@ class User(Base):
         ForeignKey("ir_company.id")
     )
 
-    company: Mapped["Company"] = relationship(
+    company: Mapped["Company"] = relationship( #type: ignore[name-defined]
         back_populates="users"
     )
     groups = relationship(

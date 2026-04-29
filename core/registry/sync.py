@@ -15,10 +15,10 @@ def sync_models(session: Session):
 
         if not existing:
             record = IrModel(
-                model=meta["model"],
-                name=meta["name"],
-                table_name=meta["table_name"],
-                module=meta["module"]
+                model=meta["model"], #type: ignore
+                name=meta["name"], #type: ignore
+                table_name=meta["table_name"], #type: ignore
+                module=meta["module"] #type: ignore
             )
             session.add(record)
             logger.info(f"✅ Registered model in DB: {model_name}")

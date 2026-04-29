@@ -1,3 +1,4 @@
+import importlib
 import logging
 logger = logging.getLogger(__name__)
 
@@ -22,21 +23,33 @@ class Registry:
             "columns": {},
             "relationships": {}
         }
-
+        
     def get_model(self, name):
         return self.models.get(name)
 
-    def load_modules(self, modules):
+    def load_modules(self, module):
         """
         modules = ordered list of module names
         """
-        for module in modules:
-            try:
-                __import__(f"modules.{module}.models")
-                logger.info(f"✅ Loaded module: {module}")
-            except Exception as e:
-                logger.error(f"Failed to load module {module}: {e}")
-                raise
+        # load models
+        try:
+            importlib.import_module(f"modules.{module}.models")
+            logger.info(f"✅ Loaded module: {module}")
+        except ModuleNotFoundError as e:
+            logger.error(f"Failed to load module {module}: {e}")
+            raise
+            
+        # load hooks (optional)
+        try:
+            importlib.import_module(f"modules.{module}.hooks")
+        except ModuleNotFoundError:
+            pass
+
+        # load services (future-proof)
+        try:
+            importlib.import_module(f"modules.{module}.services")
+        except ModuleNotFoundError:
+            pass
 
     def setup_models(self):
         """

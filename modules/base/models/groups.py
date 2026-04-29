@@ -3,7 +3,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Integer
 
 class Group(Base):
-    __tablename__ = "ir_groups"
+    __tablename__ = "ir_groups" # type: ignore[assignment]
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(50))

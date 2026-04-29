@@ -6,8 +6,6 @@ logger = logging.getLogger(__name__)
 
 def extract_fields():
     all_fields = []
-    # registry = Registry()
-    
     for model_name, model_class in registry.models.items():
         if not isinstance(model_class, DeclarativeMeta):
             continue
@@ -21,7 +19,7 @@ def extract_fields():
             logger.error(e)
             
         # 🔹 1. Handle columns (many2one + basic fields)
-        for column in mapper.columns:
+        for column in mapper.columns: #type: ignore
             field_type = str(column.type)
 
             relation = None
@@ -41,8 +39,8 @@ def extract_fields():
                 "relation_table": None
             })
 
-        # 🔹 2. Handle relationships
-        for rel in mapper.relationships:
+        # 🔹 2. Handle relationships 
+        for rel in mapper.relationships: #type: ignore
 
             rel_type = None
 
@@ -62,7 +60,7 @@ def extract_fields():
                 "required": False,
                 "relation": rel.mapper.class_.__tablename__,
                 "relation_table": (
-                    rel.secondary.name if rel.secondary is not None else None
+                    rel.secondary.name if rel.secondary is not None else None #type: ignore
                 )
             })
 

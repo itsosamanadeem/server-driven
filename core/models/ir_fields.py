@@ -3,7 +3,7 @@ from sqlalchemy import String, Boolean
 from core.db.base import Base
 
 class IrField(Base):
-    __tablename__ = "ir_fields"
+    __tablename__ = "ir_fields" # type: ignore
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

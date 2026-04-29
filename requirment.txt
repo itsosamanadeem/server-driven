@@ -1,8 +1,6 @@
 fastapi
 uvicorn
-
 SQLAlchemy
-psycopgpsql -h localhost -U hrms_user -d server_driven2==2.9.6
-
+psycopg2-binary
 python-dotenv
 alembic

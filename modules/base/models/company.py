@@ -5,12 +5,12 @@ from typing import List
 from core.db.base import Base
 
 class Company(Base):
-    __tablename__ = "ir_company"
+    __tablename__ = "ir_company" # type: ignore[assignment]
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String(100))
 
-    users: Mapped[List["User"]] = relationship(
+    users: Mapped[List["User"]] = relationship( #type: ignore[name-defined]
         back_populates="company",
         cascade="all, delete"
     )

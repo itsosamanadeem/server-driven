@@ -1,8 +1,7 @@
 import os
 from core.registry.manifest import resolve_dependencies
-from core.registry.build_meta import BuildMeta
-
-registry = BuildMeta()
+from core.registry import registry
+from core.db.base import Base
 
 def discover_modules():
     modules = []
@@ -19,10 +18,16 @@ def discover_modules():
 def load_all():
     modules = discover_modules()
     ordered = resolve_dependencies(modules)
-
+    
     registry.modules = ordered
-    registry.load_modules(ordered)
-    registry.build_meta()
+    for module in ordered:
+        registry.load_modules(module)
+        
+    for cls in Base.registry.mappers: # type: ignore
+        model_class = cls.class_
+        registry.register_model(model_class.__tablename__, model_class)
+        
     registry.setup_models()
+    registry.build_meta()    
     registry.finalize()
     

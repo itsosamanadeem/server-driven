@@ -3,7 +3,7 @@ from sqlalchemy import String
 from core.db.base import Base
 
 class IrModel(Base):
-    __tablename__ = "ir_model"
+    __tablename__ = "ir_model" #type: ignore
 
     id: Mapped[int] = mapped_column(primary_key=True)
     model: Mapped[str] = mapped_column(String(100), unique=True)

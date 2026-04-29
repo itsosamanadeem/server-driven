@@ -6,20 +6,29 @@ def load_manifest(module_name):
     return module.__dict__
 
 def resolve_dependencies(modules):
-    
     resolved = []
-    seen = set()
+    visiting = set()
+    visited = set()
 
     def visit(module):
-        if module in seen:
+        if module in visited:
             return
-        seen.add(module)
+
+        if module in visiting:
+            raise Exception(f"Circular dependency detected: {module}")
+
+        if module not in modules:
+            raise Exception(f"Missing dependency: {module}")
+
+        visiting.add(module)
 
         manifest = load_manifest(module)
-        
+
         for dep in manifest.get("depends", []):
             visit(dep)
 
+        visiting.remove(module)
+        visited.add(module)
         resolved.append(module)
 
     for m in modules:
