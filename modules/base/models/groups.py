@@ -13,3 +13,9 @@ class Group(Base):
         secondary="user_group_rel",
         back_populates="groups"
     )
+
+    permissions = relationship(
+        "Permission",
+        secondary="group_permission_rel",
+        back_populates="groups"
+    )

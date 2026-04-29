@@ -1,4 +1,8 @@
 from sqlalchemy.orm import Session
+from fastapi import HTTPException, status
+
+from core.auth.field_access import FieldAccessService
+from core.auth.permissions import PermissionService
 from core.registry import registry
 from core.hooks.executor import HookExecutor
 from core.hooks import events
@@ -9,9 +13,26 @@ from core.utils.serializer import to_dict
 
 class CRUD:
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, current_user=None):
         self.db = db
+        self.current_user = current_user
         self.meta_cache = {}
+
+    def _ensure_permission(self, model_name: str, action: str):
+        if not self.current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required",
+            )
+        PermissionService.ensure(self.current_user, model_name, action)
+
+    def _ensure_field_write_access(self, model_name: str, data: dict):
+        for field_name in data.keys():
+            if not FieldAccessService.can_write_field(self.current_user, self.db, model_name, field_name):
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail=f"Write access denied for field '{field_name}' on {model_name}",
+                )
         
     def _get_meta(self, obj):
         cls = type(obj)
@@ -27,6 +48,8 @@ class CRUD:
 
     # 🔹 CREATE
     def create(self, model_name: str, data: dict):
+        self._ensure_permission(model_name, "create")
+        self._ensure_field_write_access(model_name, data)
         model = self.get_model(model_name)
         obj = model()
 
@@ -35,7 +58,8 @@ class CRUD:
             model=model_name,
             obj=obj,
             data=data,
-            user=None
+            user=self.current_user,
+            action="create",
         )
 
         try:
@@ -70,32 +94,89 @@ class CRUD:
 
     # 🔹 READ (list)
     def search(self, model_name: str):
+        self._ensure_permission(model_name, "read")
         model = self.get_model(model_name)
         return self.db.query(model).all()
 
     # 🔹 READ (single)
     def get(self, model_name: str, record_id: int):
+        self._ensure_permission(model_name, "read")
         model = self.get_model(model_name)
         return self.db.query(model).get(record_id)
 
     # 🔹 UPDATE
     def update(self, model_name: str, record_id: int, data: dict):
+        self._ensure_permission(model_name, "write")
+        self._ensure_field_write_access(model_name, data)
         obj = self.get(model_name, record_id)
         if not obj:
             raise Exception("Record not found")
 
+        old_data = to_dict(obj)
+        ctx = HookContext(
+            db=self.db,
+            model=model_name,
+            obj=obj,
+            data=data,
+            user=self.current_user,
+            action="write",
+        )
+
+        result = HookExecutor.run(events.BEFORE_UPDATE, ctx)
+        if not result.allow:
+            self.db.rollback()
+            raise Exception(result.message or "Blocked by hook")
+
         self._apply_data(obj, data)
 
+        self.db.commit()
+        self.db.refresh(obj)
+
+        HookExecutor.run(events.AFTER_UPDATE, ctx)
+        AuditService.log(
+            self.db,
+            model_name,
+            obj.id,
+            "update",
+            old_data,
+            to_dict(obj),
+        )
         self.db.commit()
         return obj
 
     # 🔹 DELETE
     def delete(self, model_name: str, record_id: int):
+        self._ensure_permission(model_name, "delete")
         obj = self.get(model_name, record_id)
         if not obj:
             raise Exception("Record not found")
+        old_data = to_dict(obj)
+
+        ctx = HookContext(
+            db=self.db,
+            model=model_name,
+            obj=obj,
+            user=self.current_user,
+            action="delete",
+        )
+
+        result = HookExecutor.run(events.BEFORE_DELETE, ctx)
+        if not result.allow:
+            self.db.rollback()
+            raise Exception(result.message or "Blocked by hook")
 
         self.db.delete(obj)
+        self.db.commit()
+
+        HookExecutor.run(events.AFTER_DELETE, ctx)
+        AuditService.log(
+            self.db,
+            model_name,
+            record_id,
+            "delete",
+            old_data,
+            None,
+        )
         self.db.commit()
 
         return True

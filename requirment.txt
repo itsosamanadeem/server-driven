@@ -4,3 +4,7 @@ SQLAlchemy
 psycopg2-binary
 python-dotenv
 alembic
+passlib[bcrypt]
+PyJWT
+email-validator
+passlib[argon2]
