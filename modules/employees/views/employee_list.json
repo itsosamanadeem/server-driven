@@ -1,0 +1,26 @@
+{
+    "name": "employees.employee.list.default",
+    "model": "ir_employee",
+    "type": "list",
+    "priority": 100,
+    "active": true,
+    "groups": [],
+    "arch_json": {
+        "schema_version": 1,
+        "title": "Employee Form",
+        "components": {
+            "list": [
+                {
+                    "type": "field",
+                    "name": "employee_name",
+                    "label": "Employee Name"
+                },
+                {
+                    "type": "field",
+                    "name": "employee_email",
+                    "label": "Employee Email"
+                }
+            ]
+        }
+    }
+}
