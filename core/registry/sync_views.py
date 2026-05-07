@@ -32,12 +32,13 @@ def _load_json_file(path: Path) -> dict | None:
 
 def _upsert_view(db, payload: dict):
     name = payload.get("name")
+    view_key = payload.get("key") or name
     model = payload.get("model")
     view_type = payload.get("type")
     arch_json = payload.get("arch_json")
 
-    if not all([name, model, view_type, isinstance(arch_json, dict)]):
-        logger.error("Invalid view payload. Required: name, model, type, arch_json(dict). Payload=%s", payload)
+    if not all([name, view_key, model, view_type, isinstance(arch_json, dict)]):
+        logger.error("Invalid view payload. Required: key/name, model, type, arch_json(dict). Payload=%s", payload)
         return
     
     validator = ViewValidator(db, registry.field_cache)
@@ -50,23 +51,34 @@ def _upsert_view(db, payload: dict):
         )
         return
 
-    existing = db.query(IrView).filter(IrView.name == name).first()
+    existing = db.query(IrView).filter(IrView.key == view_key).first()
 
     if existing:
+        # Sync should only manage file-backed records.
+        if existing.source != "file":
+            logger.info("Skipping non-file view during sync: %s", view_key)
+            return
+        existing.key = view_key
         existing.model = model
+        existing.name = name
         existing.type = view_type
         existing.arch_json = arch_json
         existing.priority = int(payload.get("priority", 100))
         existing.active = bool(payload.get("active", True))
+        existing.source = "file"
+        existing.is_editable = False
         view_record = existing
     else:
         view_record = IrView(
+            key=view_key, #type: ignore
             name=name, #type: ignore
             model=model, #type: ignore
             type=view_type, #type: ignore
             arch_json=arch_json, #type: ignore
             priority=int(payload.get("priority", 100)), #type: ignore
             active=bool(payload.get("active", True)), #type: ignore
+            source="file", #type: ignore
+            is_editable=False, #type: ignore
         )
         db.add(view_record)
         db.flush()

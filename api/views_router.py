@@ -19,12 +19,20 @@ router = APIRouter(prefix="/views", tags=["views"])
 
 
 class ViewCreateRequest(BaseModel):
+    key: str = Field(min_length=2, max_length=180)
     name: str = Field(min_length=2, max_length=120)
     model: str = Field(min_length=2, max_length=100)
     type: str = Field(pattern="^(list|form)$")
     arch_json: dict
     priority: int = 100
     active: bool = True
+
+
+class ViewUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=2, max_length=120)
+    arch_json: dict | None = None
+    priority: int | None = None
+    active: bool | None = None
 
 
 def _collect_fields(node, fields: set[str]):
@@ -78,7 +86,6 @@ def create_view(
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
-    print(f'this is the payload : {payload}')
     validator = ViewValidator(db, registry.field_cache)
     try:
         validator.validate(payload.model, payload.type, payload.arch_json)
@@ -86,27 +93,67 @@ def create_view(
         raise HTTPException(status_code=422, detail={"errors": e.errors})
     
     view = IrView(
+        key=payload.key, #type: ignore
         name=payload.name, #type: ignore
         model=payload.model, #type: ignore
         type=payload.type, #type: ignore
         arch_json=payload.arch_json, #type: ignore
         priority=payload.priority, #type: ignore
         active=payload.active, #type: ignore
+        source="db", #type: ignore
+        is_editable=True, #type: ignore
     )
     db.add(view)
     db.commit()
     db.refresh(view)
-    return {"id": view.id, "name": view.name, "model": view.model, "type": view.type}
+    return {"id": view.id, "key": view.key, "name": view.name, "model": view.model, "type": view.type}
 
 
-@router.post("/{view_id}/groups/{group_id}")
+@router.put("/{view_key}")
+def update_view(
+    view_key: str,
+    payload: ViewUpdateRequest,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_super_admin),
+):
+    view = db.query(IrView).filter(IrView.key == view_key).first()
+    if not view:
+        raise HTTPException(status_code=404, detail="View not found")
+
+    if not view.is_editable:
+        raise HTTPException(
+            status_code=403,
+            detail="This view is file-managed and not directly editable. Create a custom DB view instead.",
+        )
+
+    if payload.arch_json is not None:
+        validator = ViewValidator(db, registry.field_cache)
+        try:
+            validator.validate(view.model, view.type, payload.arch_json)
+        except ViewValidationError as e:
+            raise HTTPException(status_code=422, detail={"errors": e.errors})
+        view.arch_json = payload.arch_json
+
+    if payload.name is not None:
+        view.name = payload.name
+    if payload.priority is not None:
+        view.priority = payload.priority
+    if payload.active is not None:
+        view.active = payload.active
+
+    db.commit()
+    db.refresh(view)
+    return {"id": view.id, "key": view.key, "name": view.name, "source": view.source, "is_editable": view.is_editable}
+
+
+@router.post("/{view_key}/groups/{group_id}")
 def attach_group_to_view(
-    view_id: int,
+    view_key: str,
     group_id: int,
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
-    view = db.query(IrView).filter(IrView.id == view_id).first()
+    view = db.query(IrView).filter(IrView.key == view_key).first()
     if not view:
         raise HTTPException(status_code=404, detail="View not found")
 
@@ -166,6 +213,7 @@ def resolve_view(
 
     return {
         "id": selected.id,
+        "key": selected.key,
         "name": selected.name,
         "model": selected.model,
         "type": selected.type,
