@@ -1,7 +1,8 @@
 import json
 import logging
 from pathlib import Path
-
+from core.registry import registry
+from core.view.view_validator import ViewValidator, ViewValidationError
 from core.registry.manifest import load_manifest
 from modules.base.models.groups import Group
 from modules.base.models.views import IrView
@@ -37,6 +38,16 @@ def _upsert_view(db, payload: dict):
 
     if not all([name, model, view_type, isinstance(arch_json, dict)]):
         logger.error("Invalid view payload. Required: name, model, type, arch_json(dict). Payload=%s", payload)
+        return
+    
+    validator = ViewValidator(db, registry.field_cache)
+    try:
+        validator.validate(model, view_type, arch_json) #type: ignore
+    except ViewValidationError as e:
+        logger.error(
+            "View '%s' failed validation — skipping. Errors: %s",
+            name, e.errors
+        )
         return
 
     existing = db.query(IrView).filter(IrView.name == name).first()

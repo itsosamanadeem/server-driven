@@ -1,26 +1,34 @@
 {
-    "name": "employees.employee.list.default",
-    "model": "ir_employee",
-    "type": "list",
-    "priority": 100,
-    "active": true,
-    "groups": [],
-    "arch_json": {
-        "schema_version": 1,
-        "title": "Employee Form",
-        "components": {
-            "list": [
-                {
-                    "type": "field",
-                    "name": "employee_name",
-                    "label": "Employee Name"
-                },
-                {
-                    "type": "field",
-                    "name": "employee_email",
-                    "label": "Employee Email"
-                }
-            ]
-        }
-    }
+  "name": "employees.employee.list.default",
+  "model": "ir_employee",
+  "type": "list",
+  "priority": 100,
+  "active": true,
+  "groups": [],
+  "arch_json": {
+    "schema_version": 2,
+    "title": "Employees",
+    "actions": [
+      {
+        "name": "create",
+        "label": "New Employee",
+        "type": "redirect",
+        "style": "primary",
+        "icon": "plus",
+        "endpoint": "/employees/new"
+      }
+    ],
+    "columns": [
+      {
+        "field": "employee_name",
+        "label": "Name",
+        "sortable": true
+      },
+      {
+        "field": "employee_email",
+        "label": "Email",
+        "sortable": false
+      }
+    ]
+  }
 }

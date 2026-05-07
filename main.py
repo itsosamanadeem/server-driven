@@ -24,6 +24,8 @@ def init_metadata():
     sync_models(db)
     sync_fields(db)
     sync_permissions(db, registry)
+    
+    registry.field_cache.load(db)
     sync_views(db, registry.modules)
     
     try:
@@ -33,7 +35,6 @@ def init_metadata():
         logger.error(f"{e}")
         raise
         
-    registry.field_cache.load(db)
     db.close() 
 
 def start_application():

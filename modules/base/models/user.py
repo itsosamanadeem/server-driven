@@ -1,8 +1,8 @@
 from datetime import datetime
 from typing import Optional
-
+import enum
 from core.db.base import Base
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 association_table = Table(
@@ -12,6 +12,10 @@ association_table = Table(
     Column("group_id", ForeignKey("ir_groups.id")),
 )
 
+class UserRoler(enum.Enum):
+    user = "User"
+    administrator = "Administrator"
+    
 class User(Base):
     __tablename__ = "ir_user" # type: ignore[assignment]
     
@@ -21,7 +25,7 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
-
+    user_role : Mapped[UserRoler] = mapped_column(Enum(UserRoler), default=UserRoler.user)
     company_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("ir_company.id")
     )

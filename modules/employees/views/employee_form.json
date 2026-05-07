@@ -6,18 +6,45 @@
   "active": true,
   "groups": [],
   "arch_json": {
-    "schema_version": 1,
-    "title": "Employee Form",
-    "components": [
+    "schema_version": 2,
+    "title": "Employee",
+    "actions": [
       {
-        "type": "field",
-        "name": "employee_name",
-        "label": "Employee Name"
+        "name": "save",
+        "label": "Save",
+        "type": "submit",
+        "style": "primary",
+        "icon": "save"
       },
       {
-        "type": "field",
-        "name": "employee_email",
-        "label": "Employee Email"
+        "name": "delete",
+        "label": "Delete",
+        "type": "delete",
+        "style": "danger",
+        "icon": "trash",
+        "confirm": true,
+        "confirm_message": "Permanently delete this employee?"
+      }
+    ],
+    "components": [
+      {
+        "type": "group",
+        "label": "Personal Information",
+        "columns": 2,
+        "children": [
+          {
+            "type": "field",
+            "name": "employee_name",
+            "label": "Full Name",
+            "required": true
+          },
+          {
+            "type": "field",
+            "name": "employee_email",
+            "label": "Work Email",
+            "required": true
+          }
+        ]
       }
     ]
   }

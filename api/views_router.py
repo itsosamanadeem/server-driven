@@ -5,6 +5,9 @@ from pydantic import BaseModel, Field
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
+from core.view.view_validator import ViewValidator, ViewValidationError
+from core.registry import registry
+
 from core.auth.dependencies import get_current_user, require_super_admin
 from core.auth.field_access import FieldAccessService
 from core.db.session import get_db
@@ -75,13 +78,20 @@ def create_view(
     db: Session = Depends(get_db),
     _: User = Depends(require_super_admin),
 ):
+    print(f'this is the payload : {payload}')
+    validator = ViewValidator(db, registry.field_cache)
+    try:
+        validator.validate(payload.model, payload.type, payload.arch_json)
+    except ViewValidationError as e:
+        raise HTTPException(status_code=422, detail={"errors": e.errors})
+    
     view = IrView(
-        name=payload.name,
-        model=payload.model,
-        type=payload.type,
-        arch_json=payload.arch_json,
-        priority=payload.priority,
-        active=payload.active,
+        name=payload.name, #type: ignore
+        model=payload.model, #type: ignore
+        type=payload.type, #type: ignore
+        arch_json=payload.arch_json, #type: ignore
+        priority=payload.priority, #type: ignore
+        active=payload.active, #type: ignore
     )
     db.add(view)
     db.commit()
