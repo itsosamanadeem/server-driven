@@ -11,6 +11,7 @@ from core.hooks.context import HookContext
 from core.validators.validator import Validator
 from core.audit.audit_service import AuditService
 from core.utils.serializer import to_dict
+from core.crud.domain import apply_domain
 
 class CRUD:
 
@@ -114,10 +115,12 @@ class CRUD:
             raise
 
     # 🔹 READ (list)
-    def search(self, model_name: str):
+    def search(self, model_name: str, domain: str | None = None):
         self._ensure_permission(model_name, "read")
         model = self.get_model(model_name)
-        return self.db.query(model).all()
+        query = self.db.query(model)
+        query = apply_domain(query, model, domain)
+        return query.all()
 
     # 🔹 READ (single)
     def get(self, model_name: str, record_id: int):

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from .serializer import DynamicModel
 from core.auth.field_access import FieldAccessService
@@ -45,16 +45,16 @@ def create_record(
 @router.get("/{model}")
 def list_records(
     model: str,
+    domain: str | None = Query(default=None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     crud = CRUD(db, current_user=current_user)
-    records = crud.search(model)
+    records = crud.search(model, domain=domain)
     return [
         serialize(r, allowed_fields=_allowed_fields_for_user(current_user, db, model, r))
         for r in records
     ]
-
 
 # 🔹 GET ONE
 @router.get("/{model}/{id}")
